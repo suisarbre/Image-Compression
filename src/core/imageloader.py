@@ -7,10 +7,10 @@ def load_image(path):
         img = Image.open(path)
         img = img.convert('L')
         img = np.array(img)
-        plt.imshow(img, cmap='gray')
-        plt.title("Original Grayscale Image")
-        plt.axis('off')
-        plt.show()
+        # plt.imshow(img, cmap='gray')
+        # plt.title("Original Grayscale Image")
+        # plt.axis('off')
+        # plt.show()
         
     except FileNotFoundError:
         print("File not found")
