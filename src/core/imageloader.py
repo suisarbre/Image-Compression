@@ -5,8 +5,9 @@ import matplotlib.pyplot as plt
 def load_image(path):
     try:
         img = Image.open(path)
-        img = img.convert('L')
+        img = img.convert('RGB')
         img = np.array(img)
+        
         # plt.imshow(img, cmap='gray')
         # plt.title("Original Grayscale Image")
         # plt.axis('off')
@@ -31,3 +32,7 @@ if __name__ == "__main__":
         print("Image loaded successfully!")
         print(f"Image shape (height, width): {matrix.shape}")
         print(f"Pixel range: {matrix.min()} to {matrix.max()} (0=black, 255=white)")
+        plt.imshow(matrix)
+        plt.title("Original Image")
+        plt.axis('off')
+        plt.show()

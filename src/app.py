@@ -13,9 +13,16 @@ class SVDCompressorGUI:
         self.compressed_matrix = None
         
         #SVD matrices
-        self.U = None
-        self.sigma = None
-        self.Vt = None
+        self.U_r = None
+        self.sigma_r = None
+        self.Vt_r = None
+        self.U_g = None
+        self.sigma_g = None
+        self.Vt_g = None
+        self.U_b = None
+        self.sigma_b = None
+        self.Vt_b = None
+        
         self.k = tk.IntVar(value = 50) #default k = 50
         
         #Setup UI
@@ -81,8 +88,11 @@ class SVDCompressorGUI:
         #compute and update SVD
         
         try:
-            self.U, self.sigma, self.Vt = compute_svd(matrix)
             self.original_image = matrix
+            # Compute SVD for all channels
+            (self.U_r, self.sigma_r, self.Vt_r), \
+            (self.U_g, self.sigma_g, self.Vt_g), \
+            (self.U_b, self.sigma_b, self.Vt_b) = compute_svd(matrix)
             self.update_compression()
             
         except Exception as e:
@@ -93,9 +103,12 @@ class SVDCompressorGUI:
             return
         
         k = int(self.k.get())
-        print(k)
         try:
-            compressed = compress(self.U,self.sigma,self.Vt,k)
+            compressed = compress(
+                self.U_r, self.sigma_r, self.Vt_r,
+                self.U_g, self.sigma_g, self.Vt_g,
+                self.U_b, self.sigma_b, self.Vt_b,
+                k)
             self.compressed_matrix = compressed
             self.save_btn.config(state = "normal")
             ratio,MSE = calculate_metrics(self.original_image,compressed,k)

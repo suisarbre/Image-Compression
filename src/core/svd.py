@@ -2,30 +2,32 @@ import numpy as np
 
 def compute_svd(matrix):
     try:
-        U, sigma, Vt = np.linalg.svd(matrix, full_matrices=False)
+        U_r, sigma_r, Vt_r = np.linalg.svd(matrix[:,:,0], full_matrices=False)
+        U_g, sigma_g, Vt_g = np.linalg.svd(matrix[:,:,1], full_matrices=False)
+        U_b, sigma_b, Vt_b = np.linalg.svd(matrix[:,:,2], full_matrices=False)
         
     except Exception as e:
         print("An error occured: ", e)
         return None
     
-    return U, sigma, Vt
+    return (U_r, sigma_r, Vt_r), (U_g, sigma_g, Vt_g), (U_b, sigma_b, Vt_b)
 
-def compress(U, sigma, Vt, k=50):
-    """
-    Compress the image by keeping the top `k` singular values.
-    Returns the reconstructed (compressed) matrix.
-    """
-    # Truncate matrices
-    U_k = U[:, :k]          # First k columns of U
-    sigma_k = sigma[:k]     # First k singular values
-    Vt_k = Vt[:k, :]       # First k rows of Vt
+def compress(U_r, sigma_r, Vt_r, U_g, sigma_g, Vt_g, U_b,sigma_b, Vt_b, k=50):
+    """Compress each channel and merge them."""
+    # Compress Red channel
+    compressed_r = U_r[:, :k] @ np.diag(sigma_r[:k]) @ Vt_r[:k, :]
     
-    # Reconstruct the compressed matrix
-    reconstructed = U_k @ np.diag(sigma_k) @ Vt_k
+    # Compress Green channel
+    compressed_g = U_g[:, :k] @ np.diag(sigma_g[:k]) @ Vt_g[:k, :]
     
-    # Clip values to 0-255 and convert back to uint8
-    reconstructed = np.clip(reconstructed, 0, 255)
-    return reconstructed.astype(np.uint8)
+    # Compress Blue channel
+    compressed_b = U_b[:, :k] @ np.diag(sigma_b[:k]) @ Vt_b[:k, :]
+    
+    # Merge channels and clip to 0-255
+    compressed = np.stack([compressed_r, compressed_g, compressed_b], axis=2)
+    compressed = np.clip(compressed, 0, 255).astype(np.uint8)
+    
+    return compressed
 
 def calculate_metrics(original, compressed, k):
     # Compression ratio
