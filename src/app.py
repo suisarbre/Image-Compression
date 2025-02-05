@@ -11,6 +11,7 @@ class SVDCompressorGUI:
         
         self.original_image = None
         self.compressed_matrix = None
+        
         #SVD matrices
         self.U = None
         self.sigma = None
@@ -97,9 +98,10 @@ class SVDCompressorGUI:
             compressed = compress(self.U,self.sigma,self.Vt,k)
             self.compressed_matrix = compressed
             self.save_btn.config(state = "normal")
+            ratio,MSE = calculate_metrics(self.original_image,compressed,k)
             #Display images
             self.display_image(self.original_image,self.original_label,"Original")
-            self.display_image(compressed,self.compressed_label, f"Compressed (k = {k})")
+            self.display_image(compressed,self.compressed_label, f"Compressed (k = {k}). Ratio = {ratio:.2f}, MSE = {MSE:.2f}")
         except Exception as e:
             messagebox.showerror("Error", f"Compression failed : {e}")
             
