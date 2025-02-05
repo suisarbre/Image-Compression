@@ -10,7 +10,7 @@ class SVDCompressorGUI:
         self.root.title = ("SVD Image Compressor")
         
         self.original_image = None
-        
+        self.compressed_matrix = None
         #SVD matrices
         self.U = None
         self.sigma = None
@@ -27,6 +27,15 @@ class SVDCompressorGUI:
         #load image button
         load_button = ttk.Button(control_frame,text="Load Image",command = self.load_and_convert)
         load_button.grid(row=0, column=0, padx=5)
+        
+        # "Save" button next to the "Load" button
+        self.save_btn = ttk.Button(
+            control_frame, 
+            text="Save Compressed", 
+            command=self.save_compressed_image,  
+            state="disabled"  # Disabled until compression happens
+        )
+        self.save_btn.grid(row=0, column=4, padx=5)
         
         #slider for k
         slider_label = ttk.Label(control_frame,text = "k (Singular Values):")
@@ -86,7 +95,8 @@ class SVDCompressorGUI:
         print(k)
         try:
             compressed = compress(self.U,self.sigma,self.Vt,k)
-            
+            self.compressed_matrix = compressed
+            self.save_btn.config(state = "normal")
             #Display images
             self.display_image(self.original_image,self.original_label,"Original")
             self.display_image(compressed,self.compressed_label, f"Compressed (k = {k})")
@@ -104,6 +114,32 @@ class SVDCompressorGUI:
         #update label
         label.config(image = tk_image, text = title, compound = tk.TOP)
         label.image = tk_image #Keep reference to avoid garbage collection
+        
+    def save_compressed_image(self):
+        if self.compressed_matrix is None:
+            messagebox.showerror("Error", "No compressed image to save!")
+            return
+
+        # Open file dialog to choose save location
+        filepath = filedialog.asksaveasfilename(
+            defaultextension=".jpg",
+            filetypes=[
+                ("JPEG", "*.jpg"),
+                ("PNG", "*.png"),
+                ("All Files", "*.*")
+            ]
+        )
+
+        if not filepath:
+            return  # User canceled
+
+        try:
+            # Convert the compressed matrix to PIL Image
+            compressed_pil = Image.fromarray(self.compressed_matrix)
+            compressed_pil.save(filepath)
+            messagebox.showinfo("Success", f"Saved to {filepath}")
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to save: {e}")
         
 def main():
     root = tk.Tk()
