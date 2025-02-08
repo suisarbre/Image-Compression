@@ -3,7 +3,7 @@ from tkinter import ttk, filedialog, messagebox
 from PIL import Image, ImageTk
 import numpy as np
 from core import *
-
+from gui.toASCII import rgb_to_ascii
 class SVDCompressorGUI:
     def __init__(self, root):
         self.root = root
@@ -11,6 +11,7 @@ class SVDCompressorGUI:
         
         self.original_image = None
         self.compressed_matrix = None
+        self.ascii_text = tk.Text(self.root, font=("Courier New", 8))
         
         #SVD matrices
         self.U_r = None
@@ -27,13 +28,49 @@ class SVDCompressorGUI:
         
         #Setup UI
         self.create_widgets()
+    
+    
+    def show_ascii_art(self):
+        if self.compressed_matrix is None:
+            messagebox.showerror("Error", "No compressed image to convert!")
+            return
         
+        # Generate colored ASCII art
+        ascii_art = rgb_to_ascii(self.compressed_matrix, width=100)
+        
+        # Display in the text widget
+        self.ascii_text.delete(1.0, tk.END)  # Clear previous content
+        self.ascii_text.insert(tk.END, ascii_art)
+    
+    def save_ascii_art(self):
+        if not self.ascii_text.get(1.0, tk.END).strip():
+            messagebox.showerror("Error", "No ASCII art to save!")
+            return
+        
+        filepath = filedialog.asksaveasfilename(
+            defaultextension=".txt",
+            filetypes=[("Text Files", "*.txt")]
+        )
+        
+        if not filepath:
+            return
+        
+        try:
+            with open(filepath, "w") as f:
+                f.write(self.ascii_text.get(1.0, tk.END))
+            messagebox.showinfo("Success", f"Saved ASCII art to {filepath}")
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to save: {e}")
+        
+    def load_and_ascii(self):
+        self.load_and_convert()
+        self.show_ascii_art()  
     def create_widgets(self):
         control_frame = ttk.Frame(self.root)
         control_frame.pack(pady=10)
         
         #load image button
-        load_button = ttk.Button(control_frame,text="Load Image",command = self.load_and_convert)
+        load_button = ttk.Button(control_frame,text="Load Image",command = self.load_and_ascii)
         load_button.grid(row=0, column=0, padx=5)
         
         # "Save" button next to the "Load" button
@@ -45,9 +82,24 @@ class SVDCompressorGUI:
         )
         self.save_btn.grid(row=0, column=4, padx=5)
         
+        #Save ASCII button
+        self.ascii_text = tk.Text(
+            self.root, 
+            wrap=tk.NONE, 
+            font=("Courier", 6),  # Monospace font for ASCII art
+            width=100, 
+            height=30
+        )
+        self.ascii_text.pack(pady=10)
+        
+        
+        
         #slider for k
         slider_label = ttk.Label(control_frame,text = "k (Singular Values):")
         slider_label.grid(row = 0,column=1,padx=5)
+        
+        #for ascii art
+        
         
         self.slider = ttk.Scale(control_frame,
                                 from_= 1,
@@ -94,7 +146,7 @@ class SVDCompressorGUI:
             (self.U_g, self.sigma_g, self.Vt_g), \
             (self.U_b, self.sigma_b, self.Vt_b) = compute_svd(matrix)
             self.update_compression()
-            
+            self.save_ascii_btn.config(state = "normal")
         except Exception as e:
             messagebox.showerror("Error",f"SVD computation failed : {e}")
                 
@@ -156,6 +208,7 @@ class SVDCompressorGUI:
         except Exception as e:
             messagebox.showerror("Error", f"Failed to save: {e}")
         
+    
 def main():
     root = tk.Tk()
     app = SVDCompressorGUI(root)
