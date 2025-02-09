@@ -29,7 +29,31 @@ class SVDCompressorGUI:
         #Setup UI
         self.create_widgets()
     
-    
+    def insert_ansi_text(self,text_widget,ansi_text):
+        from re import findall
+        
+        #split the text into segments
+        segments = findall(r'(\033\[[^m]*m)|([^\033]+)', ansi_text)
+        
+        #default
+        current_tags = "default"
+        text_widget.tag_config("default",foreground = "white")
+        
+        for code,text in segments:
+            if code:
+                #Parse ANSI code (e.g., "\033[38;2;255;0;0m" → RGB(255,0,0))
+                if "38;2" in code:
+                    parts = code[2:-1].split(";") #Remove "\033[" and "m"
+                    r,g,b = map(int,parts[-3:])
+                    tag_name = f"color_{r}_{g}_{b}"
+                    text_widget.tag_config(tag_name,foreground = f"#{r:02x}{g:02x}{b:02x}")
+                    current_tags = tag_name
+                    
+                elif code == "\033[0m":
+                    current_tags = "default"
+            elif text:
+                text_widget.insert(tk.END,text,current_tags)
+        
     def show_ascii_art(self):
         if self.compressed_matrix is None:
             messagebox.showerror("Error", "No compressed image to convert!")
@@ -40,8 +64,9 @@ class SVDCompressorGUI:
         
         # Display in the text widget
         self.ascii_text.delete(1.0, tk.END)  # Clear previous content
-        self.ascii_text.insert(tk.END, ascii_art)
-    
+        self.insert_ansi_text(self.ascii_text, ascii_art)
+        self.save_ascii_btn.config(state="normal")
+        
     def save_ascii_art(self):
         if not self.ascii_text.get(1.0, tk.END).strip():
             messagebox.showerror("Error", "No ASCII art to save!")
@@ -65,62 +90,53 @@ class SVDCompressorGUI:
     def load_and_ascii(self):
         self.load_and_convert()
         self.show_ascii_art()  
+    
     def create_widgets(self):
         control_frame = ttk.Frame(self.root)
         control_frame.pack(pady=10)
-        
-        #load image button
-        load_button = ttk.Button(control_frame,text="Load Image",command = self.load_and_ascii)
+
+        # Load Image button
+        load_button = ttk.Button(control_frame, text="Load Image", command=self.load_and_ascii)
         load_button.grid(row=0, column=0, padx=5)
-        
-        # "Save" button next to the "Load" button
-        self.save_btn = ttk.Button(
-            control_frame, 
-            text="Save Compressed", 
-            command=self.save_compressed_image,  
-            state="disabled"  # Disabled until compression happens
-        )
+
+        # Slider label for k
+        slider_label = ttk.Label(control_frame, text="k (Singular Values):")
+        slider_label.grid(row=0, column=1, padx=5)
+
+        # k slider
+        self.slider = ttk.Scale(control_frame, from_=1, to=300, variable=self.k, command=self.update_compression)
+        self.slider.grid(row=0, column=2, padx=5)
+
+        # Display selected k value
+        self.k_value_label = ttk.Label(control_frame, textvariable=tk.IntVar(value=int(self.k.get())))
+        self.k_value_label.grid(row=0, column=3, padx=5)
+
+        # Save buttons
+        self.save_btn = ttk.Button(control_frame, text="Save Compressed", command=self.save_compressed_image, state="disabled")
         self.save_btn.grid(row=0, column=4, padx=5)
-        
-        #Save ASCII button
-        self.ascii_text = tk.Text(
-            self.root, 
-            wrap=tk.NONE, 
-            font=("Courier", 6),  # Monospace font for ASCII art
-            width=100, 
-            height=30
-        )
-        self.ascii_text.pack(pady=10)
-        
-        
-        
-        #slider for k
-        slider_label = ttk.Label(control_frame,text = "k (Singular Values):")
-        slider_label.grid(row = 0,column=1,padx=5)
-        
-        #for ascii art
-        
-        
-        self.slider = ttk.Scale(control_frame,
-                                from_= 1,
-                                to = 300 ,
-                                variable = self.k,
-                                command = self.update_compression)
-        self.slider.grid(row = 0, column = 2, padx = 5)
-        
-        k_value_label = ttk.Label(control_frame,textvariable=int(self.k.get()))
-        k_value_label.grid(row = 0, column = 3, padx = 5)
-        
+
+        self.save_ascii_btn = ttk.Button(control_frame, text="Save ASCII Art", command=self.save_ascii_art, state="disabled")
+        self.save_ascii_btn.grid(row=0, column=5, padx=5)
+
+        # Image display frame
         image_frame = ttk.Frame(self.root)
-        image_frame.pack(fill = tk.BOTH,expand = True)
-        
-        #Original Image
-        self.original_label = ttk.Label(image_frame)
-        self.original_label.grid(row=0,column = 0,padx = 10, pady = 10)
-        
-        #compressed image
-        self.compressed_label = ttk.Label(image_frame)
-        self.compressed_label.grid(row = 0, column = 1, padx=10, pady=10)
+        image_frame.pack(fill=tk.BOTH, expand=True)
+
+        # Original Image
+        self.original_label = ttk.Label(image_frame, text="Original Image")
+        self.original_label.grid(row=0, column=0, padx=10, pady=10)
+
+        # Compressed Image
+        self.compressed_label = ttk.Label(image_frame, text="Compressed Image")
+        self.compressed_label.grid(row=0, column=1, padx=10, pady=10)
+
+        # ASCII Art Display
+        ascii_frame = ttk.Frame(image_frame)
+        ascii_frame.grid(row = 0,column=2,padx=10,pady=10)
+
+        self.ascii_text = tk.Text(ascii_frame, wrap=tk.NONE, font=("Courier", 5), width=100, height=80)
+        self.ascii_text.pack(fill=tk.BOTH, expand=True)
+
         
     
     def load_and_convert(self):
@@ -165,6 +181,7 @@ class SVDCompressorGUI:
             self.save_btn.config(state = "normal")
             ratio,MSE = calculate_metrics(self.original_image,compressed,k)
             #Display images
+            # self.show_ascii_art() #For some reason, this is very laggy.
             self.display_image(self.original_image,self.original_label,"Original")
             self.display_image(compressed,self.compressed_label, f"Compressed (k = {k}). Ratio = {ratio:.2f}, MSE = {MSE:.2f}")
         except Exception as e:
